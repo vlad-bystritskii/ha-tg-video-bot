@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Bot messages are now in English.
+- `/subs` downloads the video's original-language subtitles, falling back to English.
+
 ## 0.1.0
 
 - Initial release.

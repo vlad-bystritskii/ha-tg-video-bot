@@ -90,7 +90,7 @@ def cookies_args() -> list[str]:
     return []
 
 
-async def run_ytdlp(url: str, mode: str, workdir: Path) -> list[Path]:
+async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*") -> list[Path]:
     """Download `url` in the given mode. Returns produced file paths."""
     workdir.mkdir(parents=True, exist_ok=True)
     out_tmpl = str(workdir / "%(title).150B [%(id)s].%(ext)s")
@@ -110,7 +110,7 @@ async def run_ytdlp(url: str, mode: str, workdir: Path) -> list[Path]:
             "--skip-download",
             "--write-subs",
             "--write-auto-subs",
-            "--sub-langs", "ru.*,en.*,pl.*,-live_chat",
+            "--sub-langs", f"{sub_langs},-live_chat",
             "--sub-format", "srt/vtt/best",
             "--convert-subs", "srt",
             url,
@@ -142,6 +142,33 @@ async def run_ytdlp(url: str, mode: str, workdir: Path) -> list[Path]:
         return sorted(workdir.glob("*.srt"))
     files = [Path(p) for p in printed.read_text().splitlines() if p.strip()] if printed.exists() else []
     return [f for f in files if f.is_file()]
+
+
+async def probe_language(url: str) -> str | None:
+    """Ask yt-dlp for the video's original language (e.g. 'en', 'ru')."""
+    cmd = ["yt-dlp", "--no-warnings", "--skip-download",
+           "--print", "%(language)s", *cookies_args(), url]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    out, _ = await proc.communicate()
+    if proc.returncode != 0:
+        return None
+    lines = out.decode("utf-8", "replace").strip().splitlines()
+    val = (lines[0].strip() if lines else "").split("-")[0].lower()
+    return val if val and val not in ("na", "none", "null") else None
+
+
+async def download_subs(url: str, workdir: Path) -> list[Path]:
+    """Original-language subtitles first, fall back to English."""
+    lang = await probe_language(url)
+    attempts = [f"{lang}.*"] if lang and lang != "en" else []
+    attempts.append("en.*")  # fallback (and the only try when original is en/unknown)
+    for idx, langs in enumerate(attempts):
+        files = await run_ytdlp(url, "subs", workdir / f"try{idx}", sub_langs=langs)
+        if files:
+            return files
+    return []
 
 
 def video_meta(path: Path) -> dict:
@@ -191,22 +218,25 @@ async def send_result(update: Update, mode: str, files: list[Path]) -> None:
 
 
 async def process(update: Update, url: str, mode: str) -> None:
-    status = await update.message.reply_text("⏳ качаю…")
+    status = await update.message.reply_text("⏳ downloading…")
     workdir = TMP_ROOT / uuid.uuid4().hex
     try:
         await update.effective_chat.send_action(ChatAction.RECORD_VIDEO)
-        files = await run_ytdlp(url, mode, workdir)
+        if mode == "subs":
+            files = await download_subs(url, workdir)
+        else:
+            files = await run_ytdlp(url, mode, workdir)
         if not files:
-            await status.edit_text("⚠️ ничего не скачалось")
+            await status.edit_text("⚠️ nothing was downloaded")
             return
-        await status.edit_text("⬆️ отправляю…")
+        await status.edit_text("⬆️ uploading…")
         await update.effective_chat.send_action(ChatAction.UPLOAD_VIDEO)
         await send_result(update, mode, files)
         await status.delete()
     except Exception as exc:  # noqa: BLE001 — report back to the user
         log.exception("download failed")
         msg = str(exc)
-        await status.edit_text(f"❌ не получилось:\n{msg[:1500]}")
+        await status.edit_text(f"❌ failed:\n{msg[:1500]}")
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 
@@ -219,24 +249,24 @@ def guard(update: Update) -> bool:
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not guard(update):
-        await update.message.reply_text("⛔ этот бот приватный")
+        await update.message.reply_text("⛔ this bot is private")
         return
     match = URL_RE.search(update.message.text or "")
     if not match:
-        await update.message.reply_text("пришли ссылку на видео 🙂")
+        await update.message.reply_text("send me a video link 🙂")
         return
     await process(update, match.group(0), DEFAULT_FORMAT)
 
 
-def _command(mode: str):
+def _command(command: str, mode: str):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not guard(update):
-            await update.message.reply_text("⛔ этот бот приватный")
+            await update.message.reply_text("⛔ this bot is private")
             return
         text = " ".join(context.args) if context.args else ""
         match = URL_RE.search(text)
         if not match:
-            await update.message.reply_text(f"использование: /{mode} <ссылка>")
+            await update.message.reply_text(f"usage: /{command} <link>")
             return
         await process(update, match.group(0), mode)
 
@@ -246,12 +276,12 @@ def _command(mode: str):
 async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     guard(update)  # in first-owner mode this claims ownership
     await update.message.reply_text(
-        "Привет! Пришли ссылку — верну видео.\n\n"
-        "Команды:\n"
-        "• просто ссылка — лучшее качество (mp4)\n"
-        "• /hd <ссылка> — до 480p (меньше файл)\n"
-        "• /audio <ссылка> — только звук (m4a)\n"
-        "• /subs <ссылка> — только субтитры (srt)"
+        "Hi! Send me a link and I'll send the video back.\n\n"
+        "Commands:\n"
+        "• just a link — best quality (mp4)\n"
+        "• /hd <link> — capped at 480p (smaller file)\n"
+        "• /audio <link> — audio only (m4a)\n"
+        "• /subs <link> — subtitles only (srt): original language, else English"
     )
 
 
@@ -270,9 +300,9 @@ def main() -> None:
         .build()
     )
     app.add_handler(CommandHandler(["start", "help"], on_start))
-    app.add_handler(CommandHandler("hd", _command("hd480")))
-    app.add_handler(CommandHandler("audio", _command("audio")))
-    app.add_handler(CommandHandler("subs", _command("subs")))
+    app.add_handler(CommandHandler("hd", _command("hd", "hd480")))
+    app.add_handler(CommandHandler("audio", _command("audio", "audio")))
+    app.add_handler(CommandHandler("subs", _command("subs", "subs")))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     log.info("bot starting; Bot API base = %s", BOT_API_BASE_URL)
