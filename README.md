@@ -22,7 +22,7 @@ so it can return files up to **2 GB** (not the usual 50 MB cloud limit).
 - 🧰 `/fast` (≤720p) · `/audio` (m4a) · `/subs` (srt, original language → English).
 - 📦 Up to **2 GB** files via a bundled local Bot API server.
 - 🔒 Private by default — whitelist, or *first-owner* mode.
-- 🍪 Optional `cookies.txt` for age-gated / private videos.
+- 🍪 Optional `cookies.txt` for age-gated / private videos — just send the file to the bot.
 
 Two ways to run it, **one repo**:
 

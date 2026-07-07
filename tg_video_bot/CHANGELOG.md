@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Send a `cookies.txt` file to the bot and it installs it (no manual file copy needed).
+
 ## 0.2.1
 
 - Added add-on icon / logo.

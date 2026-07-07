@@ -61,9 +61,14 @@ you so.
 
 ## Cookies (age-gated / private / subscriptions)
 
-The add-on has no browser, so export cookies elsewhere and drop the file in.
+The add-on has no browser, so cookies are exported elsewhere. Two ways to install them:
 
-On a machine that has the browser logged in (e.g. your Mac with Chrome):
+**Easiest — send the file to the bot.** Export a `cookies.txt` (see below) and just
+send it to the bot as a document in Telegram. It saves it to `cookies_path` and uses
+it from then on. (Only the owner can do this — the bot is private.)
+
+**Or drop the file in manually.** On a machine that has the browser logged in
+(e.g. your Mac with Chrome):
 
 ```bash
 yt-dlp --cookies-from-browser chrome \

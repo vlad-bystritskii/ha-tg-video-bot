@@ -270,6 +270,43 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await process(update, match.group(0), DEFAULT_FORMAT)
 
 
+async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """A sent document is treated as a cookies.txt to install."""
+    if not guard(update):
+        await update.message.reply_text("⛔ this bot is private")
+        return
+    if not COOKIES_PATH:
+        await update.message.reply_text("cookies path is not configured")
+        return
+    status = await update.message.reply_text("🍪 saving cookies…")
+    try:
+        tg_file = await update.message.document.get_file()
+        dest = Path(COOKIES_PATH)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        # With the local Bot API server, get_file() usually yields an on-disk
+        # path we can copy directly; otherwise fall back to an HTTP download.
+        src = tg_file.file_path
+        if src and os.path.isfile(src):
+            shutil.copyfile(src, dest)
+        else:
+            await tg_file.download_to_drive(custom_path=str(dest))
+        text = dest.read_text(errors="ignore")
+        first = text.splitlines()[0] if text else ""
+        if "Cookie File" not in first and "\t" not in text[:4000]:
+            await status.edit_text(
+                "⚠️ that doesn't look like a Netscape cookies.txt — saved anyway, "
+                "double-check it was exported with `yt-dlp --cookies`"
+            )
+        else:
+            entries = sum(1 for ln in text.splitlines() if ln and not ln.startswith("#"))
+            await status.edit_text(
+                f"🍪 cookies saved ({entries} entries) — I'll use them for downloads."
+            )
+    except Exception as exc:  # noqa: BLE001 — report back to the user
+        log.exception("cookies upload failed")
+        await status.edit_text(f"❌ couldn't save cookies:\n{str(exc)[:500]}")
+
+
 def _command(command: str, mode: str):
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not guard(update):
@@ -293,7 +330,8 @@ async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• just a link — best quality (mp4)\n"
         "• /fast <link> — up to 720p (smaller / faster)\n"
         "• /audio <link> — audio only (m4a)\n"
-        "• /subs <link> — subtitles only (srt): original language, else English"
+        "• /subs <link> — subtitles only (srt): original language, else English\n\n"
+        "Send me a cookies.txt file and I'll use it for age-gated / private videos."
     )
 
 
@@ -318,6 +356,7 @@ def main() -> None:
     app.add_handler(CommandHandler("fast", _command("fast", "fast")))
     app.add_handler(CommandHandler("audio", _command("audio", "audio")))
     app.add_handler(CommandHandler("subs", _command("subs", "subs")))
+    app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     log.info("bot starting; Bot API base = %s", BOT_API_BASE_URL)
