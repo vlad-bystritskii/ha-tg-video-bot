@@ -19,7 +19,7 @@ so it can return files up to **2 GB** (not the usual 50 MB cloud limit).
 ## What it does
 
 - 📥 Send any supported link → best MP4-compatible (h264/aac) video back in chat.
-- 🧰 `/hd` (≤480p) · `/audio` (m4a) · `/subs` (srt).
+- 🧰 `/fast` (≤720p) · `/audio` (m4a) · `/subs` (srt, original language → English).
 - 📦 Up to **2 GB** files via a bundled local Bot API server.
 - 🔒 Private by default — whitelist, or *first-owner* mode.
 - 🍪 Optional `cookies.txt` for age-gated / private videos.

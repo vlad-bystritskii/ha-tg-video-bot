@@ -13,7 +13,7 @@ configuration:
     description: Numeric Telegram user IDs allowed to use the bot. Leave empty to let the first person who messages the bot become the sole owner.
   default_format:
     name: Default quality
-    description: Quality used when you send a bare link. "best" = best MP4-compatible, "hd480" = capped at 480p (smaller files).
+    description: Quality used when you send a bare link. "best" = best MP4-compatible, "fast" = best available up to 720p (smaller / faster).
   cookies_path:
     name: Cookies file path
     description: Optional Netscape cookies.txt for age-gated / private videos. Export it on a machine with a browser and place it here.

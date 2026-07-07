@@ -24,7 +24,7 @@ real videos, not just short clips.
 | `api_id`           | —                                    | api_id from my.telegram.org (required)                             |
 | `api_hash`         | —                                    | api_hash from my.telegram.org (required)                           |
 | `allowed_user_ids` | `[]`                                 | Numeric ids allowed to use the bot. Empty → first-owner mode       |
-| `default_format`   | `best`                               | Quality for a bare link: `best` or `hd480`                         |
+| `default_format`   | `best`                               | Quality for a bare link: `best` or `fast` (best available ≤720p)   |
 | `cookies_path`     | `/config/tg_video_bot/cookies.txt`   | Optional Netscape cookies.txt for age-gated / private videos       |
 
 Example:
@@ -51,9 +51,13 @@ arbitrary URLs, so it always denies by default.
 ## Usage
 
 - Send any link → best MP4-compatible quality.
-- `/hd <link>` → capped at 480p (smaller file).
+- `/fast <link>` → best available up to 720p (smaller / faster).
 - `/audio <link>` → audio only (m4a).
-- `/subs <link>` → subtitles only (srt, `ru`/`en`/`pl`).
+- `/subs <link>` → subtitles only (srt): the video's original language, else English.
+
+Videos are sent as in-app **playable videos**; if Telegram can't render one
+(bad metadata / edge cases) it falls back to sending it as a plain file and tells
+you so.
 
 ## Cookies (age-gated / private / subscriptions)
 

@@ -11,7 +11,7 @@ or directly in docker-compose.yml):
   BOT_TOKEN          Telegram bot token
   BOT_API_BASE_URL   base URL of the local Bot API server (default http://127.0.0.1:8081)
   ALLOWED_USER_IDS   comma-separated numeric user ids; empty = first-owner mode
-  DEFAULT_FORMAT     best | hd480  (used for a bare link)
+  DEFAULT_FORMAT     best | fast  (used for a bare link)
   COOKIES_PATH       optional path to a Netscape cookies.txt
   DATA_DIR           writable dir for owner.json and temp downloads (default /data)
 """
@@ -58,7 +58,10 @@ URL_RE = re.compile(r"https?://\S+")
 SORT = "vcodec:h264,lang,quality,res,fps,hdr:12,acodec:aac"
 FORMAT = {
     "best": "bv*+ba/b",
-    "hd480": "bv*[height<=480]+ba/b[height<=480]/b[height<=480]",
+    # Best available up to 720p. `height<=720` already steps down 720 -> 480 ->
+    # lower on its own; the trailing /b covers the rare case where every format
+    # is above 720p.
+    "fast": "bv*[height<=720]+ba/b[height<=720]/b[height<=720]/b",
 }
 
 
@@ -119,7 +122,7 @@ async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*")
         cmd = base + ["--print-to-file", "after_move:%(filepath)s", str(printed)]
         if mode == "audio":
             cmd += ["-f", "ba/b", "-x", "--audio-format", "m4a"]
-        else:  # best / hd480
+        else:  # best / fast
             cmd += [
                 "--merge-output-format", "mp4",
                 "--remux-video", "mp4",
@@ -188,8 +191,10 @@ def video_meta(path: Path) -> dict:
     return meta
 
 
-async def send_result(update: Update, mode: str, files: list[Path]) -> None:
+async def send_result(update: Update, mode: str, files: list[Path]) -> list[str]:
+    """Send files back. Returns any warnings to surface to the user."""
     chat = update.effective_chat
+    notes: list[str] = []
     for path in files:
         if mode == "subs":
             with path.open("rb") as fh:
@@ -201,6 +206,7 @@ async def send_result(update: Update, mode: str, files: list[Path]) -> None:
             continue
         meta = video_meta(path)
         try:
+            # Preferred path: a real, in-app playable video (not a file).
             with path.open("rb") as fh:
                 await chat.send_video(
                     video=fh,
@@ -212,9 +218,12 @@ async def send_result(update: Update, mode: str, files: list[Path]) -> None:
                     caption=path.stem[:1000],
                 )
         except Exception as exc:  # noqa: BLE001 — fall back to a plain file
+            reason = str(exc).splitlines()[0][:120] if str(exc) else "unknown"
             log.warning("send_video failed (%s); retrying as document", exc)
             with path.open("rb") as fh:
                 await chat.send_document(document=fh, filename=path.name)
+            notes.append(f"⚠️ sent as file (couldn't send as video: {reason})")
+    return notes
 
 
 async def process(update: Update, url: str, mode: str) -> None:
@@ -231,8 +240,11 @@ async def process(update: Update, url: str, mode: str) -> None:
             return
         await status.edit_text("⬆️ uploading…")
         await update.effective_chat.send_action(ChatAction.UPLOAD_VIDEO)
-        await send_result(update, mode, files)
-        await status.delete()
+        notes = await send_result(update, mode, files)
+        if notes:
+            await status.edit_text("\n".join(notes))
+        else:
+            await status.delete()
     except Exception as exc:  # noqa: BLE001 — report back to the user
         log.exception("download failed")
         msg = str(exc)
@@ -279,13 +291,16 @@ async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Hi! Send me a link and I'll send the video back.\n\n"
         "Commands:\n"
         "• just a link — best quality (mp4)\n"
-        "• /hd <link> — capped at 480p (smaller file)\n"
+        "• /fast <link> — up to 720p (smaller / faster)\n"
         "• /audio <link> — audio only (m4a)\n"
         "• /subs <link> — subtitles only (srt): original language, else English"
     )
 
 
 def main() -> None:
+    # Wipe any leftovers from a previous run (e.g. a crash mid-download), then
+    # start clean. Per-request temp dirs are also removed after each send.
+    shutil.rmtree(TMP_ROOT, ignore_errors=True)
     TMP_ROOT.mkdir(parents=True, exist_ok=True)
     app = (
         ApplicationBuilder()
@@ -300,7 +315,7 @@ def main() -> None:
         .build()
     )
     app.add_handler(CommandHandler(["start", "help"], on_start))
-    app.add_handler(CommandHandler("hd", _command("hd", "hd480")))
+    app.add_handler(CommandHandler("fast", _command("fast", "fast")))
     app.add_handler(CommandHandler("audio", _command("audio", "audio")))
     app.add_handler(CommandHandler("subs", _command("subs", "subs")))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))

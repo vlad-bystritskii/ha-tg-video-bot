@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Renamed `/hd` → `/fast`, now best available up to 720p (steps down automatically).
+- Videos always try to send as a playable video first; on fallback to a file the
+  bot says why.
+- Temp download dir is wiped on start (in addition to per-request cleanup).
+
 ## 0.1.1
 
 - Bot messages are now in English.
