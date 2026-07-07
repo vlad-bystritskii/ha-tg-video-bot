@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Added add-on icon / logo.
+
 ## 0.2.0
 
 - Renamed `/hd` → `/fast`, now best available up to 720p (steps down automatically).
