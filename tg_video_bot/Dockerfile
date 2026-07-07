@@ -13,6 +13,17 @@ RUN apk add --no-cache \
     curl \
     tzdata
 
+# yt-dlp needs an external JavaScript runtime to solve YouTube's JS challenges
+# (required since yt-dlp 2025.11.12 — without it YouTube returns "Requested format
+# is not available"). Deno is yt-dlp's default runtime. Deno's official Alpine
+# image ships a musl-runnable deno (its glibc deps are bundled under
+# /usr/local/lib/glibc with a private loader), so copying those exact paths adds
+# Deno without disturbing the rest of the (musl) image.
+COPY --from=denoland/deno:alpine /bin/deno /bin/deno
+COPY --from=denoland/deno:alpine /usr/local/lib/glibc/ /usr/local/lib/glibc/
+COPY --from=denoland/deno:alpine /lib/ld-linux-* /lib/
+ENV DENO_DIR=/tmp/deno
+
 COPY requirements.txt /
 RUN pip3 install --no-cache-dir --break-system-packages -r /requirements.txt
 

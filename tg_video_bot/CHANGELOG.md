@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Bundle the Deno JS runtime and `yt-dlp[default]` so YouTube works (fixes
+  "Requested format is not available" caused by unsolved JS challenges).
+
 ## 0.3.0
 
 - Send a `cookies.txt` file to the bot and it installs it (no manual file copy needed).

@@ -59,5 +59,6 @@ export BOT_TOKEN API_ID API_HASH DEFAULT_FORMAT COOKIES_PATH ALLOWED_USER_IDS
 export BOT_API_BASE_URL="http://127.0.0.1:8081"
 export DATA_DIR="/data"
 
+echo "[run.sh] deno: $(deno --version 2>&1 | head -1 || echo 'MISSING — YouTube JS challenges will fail')"
 echo "[run.sh] starting bot"
 exec python3 /bot.py
