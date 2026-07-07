@@ -1,0 +1,31 @@
+name: TG Video Downloader
+version: "0.1.0"
+slug: tg_video_bot
+description: Send a link to your private Telegram bot and get the video back (yt-dlp, up to 2 GB via a local Bot API server)
+url: https://github.com/vlad-bystritskii/ha-tg-video-bot
+stage: stable
+arch:
+  - amd64
+  - aarch64
+init: false
+boot: auto
+# data:rw  -> owner.json, temp downloads, local Bot API working dir
+# config:rw -> optional cookies.txt at /config/tg_video_bot/cookies.txt
+map:
+  - data:rw
+  - config:rw
+options:
+  bot_token: ""
+  api_id: 0
+  api_hash: ""
+  allowed_user_ids: []
+  default_format: best
+  cookies_path: "/config/tg_video_bot/cookies.txt"
+schema:
+  bot_token: str
+  api_id: int
+  api_hash: str
+  allowed_user_ids:
+    - int
+  default_format: "list(best|hd480)"
+  cookies_path: str

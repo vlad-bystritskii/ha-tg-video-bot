@@ -1,0 +1,37 @@
+# Non-Home-Assistant deployment: two containers on any Linux box / NAS.
+# The Home Assistant add-on packs both into one container instead (see tg_video_bot/).
+#
+#   1. cp .env.example .env   and fill in the values
+#   2. (optional) put a cookies.txt next to this file for age-gated/private videos
+#   3. docker compose up -d --build
+services:
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${API_ID}
+      TELEGRAM_API_HASH: ${API_HASH}
+      TELEGRAM_LOCAL: "true"          # enables --local -> uploads up to 2 GB
+    volumes:
+      - botapi_data:/var/lib/telegram-bot-api
+
+  bot:
+    build: ./tg_video_bot
+    command: ["python3", "/bot.py"]   # image also contains bot-api; here we only run the bot
+    restart: unless-stopped
+    depends_on:
+      - telegram-bot-api
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_API_BASE_URL: "http://telegram-bot-api:8081"
+      ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:-}
+      DEFAULT_FORMAT: ${DEFAULT_FORMAT:-best}
+      COOKIES_PATH: "/config/cookies.txt"
+      DATA_DIR: "/data"
+    volumes:
+      - bot_data:/data
+      - ./cookies.txt:/config/cookies.txt:ro
+
+volumes:
+  botapi_data:
+  bot_data:

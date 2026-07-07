@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/
+downloads/
+*.mp4
+*.mkv
+*.webm
+*.m4a
+*.srt
+*.info.json
+cookies.txt
+.env
+.DS_Store

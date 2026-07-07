@@ -1,0 +1,19 @@
+configuration:
+  bot_token:
+    name: Bot token
+    description: Token of your Telegram bot from @BotFather.
+  api_id:
+    name: Telegram API ID
+    description: api_id of a Telegram application created at https://my.telegram.org (needed for the local Bot API server that lifts the upload limit to 2 GB).
+  api_hash:
+    name: Telegram API hash
+    description: api_hash from the same https://my.telegram.org application.
+  allowed_user_ids:
+    name: Allowed user IDs
+    description: Numeric Telegram user IDs allowed to use the bot. Leave empty to let the first person who messages the bot become the sole owner.
+  default_format:
+    name: Default quality
+    description: Quality used when you send a bare link. "best" = best MP4-compatible, "hd480" = capped at 480p (smaller files).
+  cookies_path:
+    name: Cookies file path
+    description: Optional Netscape cookies.txt for age-gated / private videos. Export it on a machine with a browser and place it here.
