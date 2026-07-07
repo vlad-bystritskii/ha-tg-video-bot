@@ -104,6 +104,7 @@ async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*")
         "--no-playlist",
         "--no-progress",
         "--no-warnings",
+        "--js-runtimes", "node",  # solve YouTube JS challenges via Node
         "-o", out_tmpl,
         *cookies_args(),
     ]
@@ -150,6 +151,7 @@ async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*")
 async def probe_language(url: str) -> str | None:
     """Ask yt-dlp for the video's original language (e.g. 'en', 'ru')."""
     cmd = ["yt-dlp", "--no-warnings", "--skip-download",
+           "--js-runtimes", "node",
            "--print", "%(language)s", *cookies_args(), url]
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE

@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.3.2
+
+- Use Node.js (native musl, via apk) as the yt-dlp JS runtime instead of a
+  glibc-shimmed Deno that failed to execute on Alpine. Fixes YouTube downloads.
+
 ## 0.3.1
 
-- Bundle the Deno JS runtime and `yt-dlp[default]` so YouTube works (fixes
-  "Requested format is not available" caused by unsolved JS challenges).
+- Add `yt-dlp[default]` + a JS runtime so YouTube works (fixes "Requested format
+  is not available" caused by unsolved JS challenges).
 
 ## 0.3.0
 

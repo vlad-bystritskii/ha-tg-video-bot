@@ -1,5 +1,5 @@
 name: TG Video Downloader
-version: "0.3.1"
+version: "0.3.2"
 slug: tg_video_bot
 description: Send a link to your private Telegram bot and get the video back (yt-dlp, up to 2 GB via a local Bot API server)
 url: https://github.com/vlad-bystritskii/ha-tg-video-bot
