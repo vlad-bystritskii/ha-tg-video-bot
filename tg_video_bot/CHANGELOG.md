@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- `/subs` no longer sends the same subtitles twice when a source exposes several
+  tracks for one language (YouTube serves both `en` and `en-orig`). It now sends
+  a single file, preferring the original-language track.
+
 ## 0.4.0
 
 - Other people can now use the bot **with the owner's approval**: a stranger who

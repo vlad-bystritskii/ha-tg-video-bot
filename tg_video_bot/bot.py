@@ -351,6 +351,21 @@ async def probe_language(url: str) -> str | None:
     return val if val and val not in ("na", "none", "null") else None
 
 
+def pick_sub(files: list[Path]) -> Path:
+    """One file per attempt.
+
+    A source often exposes several tracks for the same language — YouTube serves
+    both `en` and `en-orig` — and our `en.*` glob (which is there to catch `en-US`
+    and friends) matches them all. They're near-identical, so send just one, and
+    prefer the original-language track that /subs promises.
+    """
+    def rank(path: Path) -> tuple[int, str]:
+        tag = path.stem.rsplit(".", 1)[-1].lower()  # "… [id].en-orig" -> "en-orig"
+        return (0 if tag.endswith("-orig") else 1, path.name)
+
+    return min(files, key=rank)
+
+
 async def download_subs(url: str, workdir: Path) -> list[Path]:
     """Original-language subtitles first, fall back to English."""
     lang = await probe_language(url)
@@ -359,7 +374,7 @@ async def download_subs(url: str, workdir: Path) -> list[Path]:
     for idx, langs in enumerate(attempts):
         files = await run_ytdlp(url, "subs", workdir / f"try{idx}", sub_langs=langs)
         if files:
-            return files
+            return [pick_sub(files)]
     return []
 
 
