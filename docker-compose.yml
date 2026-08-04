@@ -25,6 +25,7 @@ services:
       BOT_TOKEN: ${BOT_TOKEN}
       BOT_API_BASE_URL: "http://telegram-bot-api:8081"
       ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:-}
+      ALLOW_ACCESS_REQUESTS: ${ALLOW_ACCESS_REQUESTS:-true}
       DEFAULT_FORMAT: ${DEFAULT_FORMAT:-best}
       COOKIES_PATH: "/config/cookies.txt"
       DATA_DIR: "/data"

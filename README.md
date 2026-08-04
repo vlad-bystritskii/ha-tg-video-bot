@@ -22,6 +22,8 @@ so it can return files up to **2 GB** (not the usual 50 MB cloud limit).
 - 🧰 `/fast` (≤720p) · `/audio` (m4a) · `/subs` (srt, original language → English).
 - 📦 Up to **2 GB** files via a bundled local Bot API server.
 - 🔒 Private by default — whitelist, or *first-owner* mode.
+- 👥 Share it: a stranger who messages the bot is queued, and you let them in with
+  an **allow / deny** button. `/requests off` mutes the pings while you're away.
 - 🍪 Optional `cookies.txt` for age-gated / private videos — just send the file to the bot.
 
 Two ways to run it, **one repo**:
@@ -54,8 +56,11 @@ Full walkthrough in **[tg_video_bot/DOCS.md](tg_video_bot/DOCS.md)**.
 
 ## Security
 
-Personal bot on purpose: it denies everyone until you either list your
-`allowed_user_ids` or claim it in first-owner mode. It only makes outbound
+Private bot on purpose: it denies everyone until you either list your
+`allowed_user_ids` (the bot's *owners*) or claim it in first-owner mode. Other
+people only get in when an owner approves them, and approved users can download
+but can't approve anyone or touch your cookies. Access requests are rate-limited
+and mutable, so the bot can't be used to spam you. It only makes outbound
 connections (long polling) — no ports are exposed. Never commit your `.env` or
 `cookies.txt` (both are git-ignored).
 

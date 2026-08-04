@@ -9,8 +9,11 @@ configuration:
     name: Telegram API hash
     description: api_hash from the same https://my.telegram.org application.
   allowed_user_ids:
-    name: Allowed user IDs
-    description: Numeric Telegram user IDs allowed to use the bot. Leave empty to let the first person who messages the bot become the sole owner.
+    name: Owner user IDs
+    description: Numeric Telegram user IDs of the bot's owners — they can use it and approve other people. Leave empty to let the first person who messages the bot become the sole owner.
+  allow_access_requests:
+    name: Let others request access
+    description: When on, a stranger who messages the bot can ask an owner for access; the owner allows or denies them with a button in Telegram. When off, everyone who is not an owner or already approved is refused.
   default_format:
     name: Default quality
     description: Quality used when you send a bare link. "best" = best MP4-compatible, "fast" = best available up to 720p (smaller / faster).

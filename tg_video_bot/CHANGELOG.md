@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+- Other people can now use the bot **with the owner's approval**: a stranger who
+  messages it gets an "asked the owner" reply, the owner gets an *allow / deny*
+  button, and approved users are remembered in `/data/access.json`.
+- Spam control: one open request per person, at most 5 owner pings an hour, and a
+  20-request queue cap. `/requests off` mutes the pings while you're away —
+  people keep queueing quietly and `/requests on` hands you the whole queue.
+- New owner commands: `/users`, `/pending`, `/requests on|off`, `/allow <id>`,
+  `/revoke <id>`.
+- New option `allow_access_requests` (default on) to turn the request flow off.
+- `allowed_user_ids` are now the bot's *owners*: only they can approve people and
+  install a `cookies.txt`. Approved users can only download.
+
 ## 0.3.2
 
 - Use Node.js (native musl, via apk) as the yt-dlp JS runtime instead of a

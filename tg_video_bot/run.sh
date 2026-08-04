@@ -15,6 +15,7 @@ DEFAULT_FORMAT="$(jq -r '.default_format // "best"' "$OPTIONS")"
 COOKIES_PATH="$(jq -r '.cookies_path // ""' "$OPTIONS")"
 # array -> comma separated
 ALLOWED_USER_IDS="$(jq -r '(.allowed_user_ids // []) | map(tostring) | join(",")' "$OPTIONS")"
+ALLOW_ACCESS_REQUESTS="$(jq -r 'if .allow_access_requests == false then "false" else "true" end' "$OPTIONS")"
 
 if [ -z "$BOT_TOKEN" ]; then
   echo "[run.sh] FATAL: bot_token is not set in add-on options" >&2
@@ -56,6 +57,7 @@ done
 
 # --- run the bot -------------------------------------------------------------
 export BOT_TOKEN API_ID API_HASH DEFAULT_FORMAT COOKIES_PATH ALLOWED_USER_IDS
+export ALLOW_ACCESS_REQUESTS
 export BOT_API_BASE_URL="http://127.0.0.1:8081"
 export DATA_DIR="/data"
 
