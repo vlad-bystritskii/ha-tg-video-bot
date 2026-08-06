@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2
+
+- A download that fails on `403 Forbidden` (or another sign-in/cookie error) now
+  tells owners **how to fix it**: the bot replies with a copy-paste command that
+  re-exports the browser cookies, trims them to the failing site, and drops a
+  `cookies.txt` on the Desktop — send that file back and the bot is working
+  again. Non-owners just get "ask an owner to refresh the cookies".
+- The suggested export no longer ships your whole cookie jar to the add-on: it
+  keeps only the domains the download needs (for YouTube: `youtube.com`,
+  `.google.com`, `accounts.google.com`), not your mail/drive/cloud sessions.
+
 ## 0.4.1
 
 - `/subs` no longer sends the same subtitles twice when a source exposes several

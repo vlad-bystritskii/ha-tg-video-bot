@@ -116,9 +116,29 @@ yt-dlp --cookies-from-browser chrome \
 ```
 
 Put the resulting `cookies.txt` at `/config/tg_video_bot/cookies.txt` (the add-on's
-`/config` maps to Home Assistant's config folder). Cookies expire, so refresh it
-periodically (a scheduled job works well). Tip: use a throwaway account/profile —
-`yt-dlp` can invalidate cookies of an actively used browser session.
+`/config` maps to Home Assistant's config folder).
+
+⚠️ `--cookies-from-browser` dumps **every** cookie in the browser — your mail,
+drive and everything else you're signed into. Keep only what the download needs:
+
+```bash
+awk -F'\t' '/^#/ || $1 ~ /(^|\.)youtube\.com$/ || $1 == ".google.com" \
+            || $1 == "accounts.google.com"' all-cookies.txt > cookies.txt
+```
+
+### When cookies go stale
+
+They will: YouTube rotates its tokens while the browser keeps using them, and the
+exported set stops working within days. The symptom is a download that fails with
+`HTTP Error 403: Forbidden` — extraction succeeds, only the media URL is refused.
+
+When that happens the bot replies to an **owner** with a ready-made refresh
+command (already scoped to the failing site) — copy it, run it, and send the
+`cookies.txt` it leaves on your Desktop back to the bot.
+
+To make them last, export from a throwaway account in a **private window**: log
+in, open `https://www.youtube.com/robots.txt` (not a video, so the player doesn't
+rotate anything), export, then close the window *without* logging out.
 
 ## Notes
 

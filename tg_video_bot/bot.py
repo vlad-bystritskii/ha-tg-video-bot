@@ -21,18 +21,21 @@ from __future__ import annotations
 
 import asyncio
 import glob
+import html
 import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, User
-from telegram.constants import ChatAction
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
@@ -280,6 +283,77 @@ def cookies_args() -> list[str]:
     return []
 
 
+# --- cookie-expiry hint ------------------------------------------------------
+# An exported browser session dies fast: YouTube rotates its tokens while the
+# browser keeps using them, and once the saved set is stale extraction still
+# succeeds but the media URL answers 403. That looks like a broken bot, so when
+# a download fails this way we hand the admin the exact refresh command.
+COOKIE_ERROR_RE = re.compile(
+    r"HTTP Error 40[13]"
+    r"|Sign in to confirm"
+    r"|confirm your age"
+    r"|not a bot"
+    r"|login required"
+    r"|private video"
+    r"|members-only"
+    r"|cookie",
+    re.IGNORECASE,
+)
+
+# A bare --cookies-from-browser dump carries every site you are logged into, so
+# the command pipes it through awk and keeps only what this download needs.
+COOKIE_REFRESH_CMD = (
+    "yt-dlp --cookies-from-browser chrome --cookies /tmp/all-cookies.txt "
+    "--skip-download {url} && "
+    "awk -F'\\t' '/^#/ || {filter}' /tmp/all-cookies.txt "
+    "> ~/Desktop/cookies.txt && rm /tmp/all-cookies.txt"
+)
+
+# YouTube logins live on google.com too, but only these two entries — not every
+# mail/drive/cloud subdomain sitting in the same jar.
+YOUTUBE_COOKIE_FILTER = (
+    '$1 ~ /(^|\\.)youtube\\.com$/ || $1 == ".google.com" '
+    '|| $1 == "accounts.google.com"'
+)
+
+
+def cookie_filter_expr(url: str) -> str:
+    """awk condition keeping only the cookies the given site needs."""
+    host = re.sub(r"[^a-z0-9.-]", "", (urlsplit(url).hostname or "").lower())
+    if "youtube" in host or "youtu.be" in host:
+        return YOUTUBE_COOKIE_FILTER
+    base = ".".join(host.split(".")[-2:])
+    if not base:
+        return "1"
+    return "$1 ~ /(^|\\.)%s$/" % base.replace(".", "\\.")
+
+
+def cookie_hint(url: str, for_admin: bool) -> str:
+    """HTML fragment telling an admin how to refresh the cookies ('' if N/A)."""
+    if not COOKIES_PATH:
+        return ""
+    if not for_admin:
+        return "\n\n🍪 the cookies may have expired — ask an owner to refresh them."
+    cmd = COOKIE_REFRESH_CMD.format(
+        url=shlex.quote(url), filter=cookie_filter_expr(url)
+    )
+    lead = (
+        "looks like the cookies went stale"
+        if Path(COOKIES_PATH).is_file()
+        else "this one probably needs cookies, and I have none"
+    )
+    return (
+        f"\n\n🍪 <b>{lead}.</b> Run this on your "
+        "machine (swap <code>chrome</code> for firefox/safari/edge if needed):\n"
+        # quote=False: inside <pre> only & < > need escaping, and turning the
+        # command's own quotes into entities would only make it harder to read.
+        f"<pre>{html.escape(cmd, quote=False)}</pre>\n"
+        "…then send me the <code>cookies.txt</code> it leaves on your Desktop.\n"
+        "Export from a private window and close it <i>without</i> logging out — "
+        "YouTube keeps invalidating the cookies of a session that stays open."
+    )
+
+
 async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*") -> list[Path]:
     """Download `url` in the given mode. Returns produced file paths."""
     workdir.mkdir(parents=True, exist_ok=True)
@@ -452,7 +526,22 @@ async def process(update: Update, url: str, mode: str) -> None:
     except Exception as exc:  # noqa: BLE001 — report back to the user
         log.exception("download failed")
         msg = str(exc)
-        await status.edit_text(f"❌ failed:\n{msg[:1500]}")
+        hint = (
+            cookie_hint(url, is_admin(update.effective_user.id))
+            if COOKIE_ERROR_RE.search(msg)
+            else ""
+        )
+        text = f"❌ failed:\n{msg[:1500]}"
+        if hint:
+            try:
+                await status.edit_text(
+                    f"❌ failed:\n<pre>{html.escape(msg[:1500], quote=False)}</pre>{hint}",
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+            except Exception:  # noqa: BLE001 — bad markup shouldn't eat the error
+                log.exception("cookie hint failed to render; sending plain text")
+        await status.edit_text(text)
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 

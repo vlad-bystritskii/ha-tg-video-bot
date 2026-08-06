@@ -25,6 +25,9 @@ so it can return files up to **2 GB** (not the usual 50 MB cloud limit).
 - 👥 Share it: a stranger who messages the bot is queued, and you let them in with
   an **allow / deny** button. `/requests off` mutes the pings while you're away.
 - 🍪 Optional `cookies.txt` for age-gated / private videos — just send the file to the bot.
+- 🔁 Cookies expire and YouTube starts answering `403`; when that happens the bot
+  hands the owner a copy-paste command that re-exports them, trimmed to the site
+  that failed. Run it, send the file back, done.
 
 Two ways to run it, **one repo**:
 
