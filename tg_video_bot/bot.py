@@ -23,7 +23,6 @@ import asyncio
 import glob
 import html
 import json
-import logging
 import os
 import re
 import shlex
@@ -34,6 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import logsetup
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, User
 from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
@@ -45,10 +45,7 @@ from telegram.ext import (
     filters,
 )
 
-logging.basicConfig(
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO
-)
-log = logging.getLogger("tg-video-bot")
+log = logsetup.setup("tg-video-bot")
 
 # --- config ------------------------------------------------------------------
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -258,8 +255,12 @@ async def require_access(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not user:
         return False
     claim_owner(user.id)
+    logsetup.new_trace(user.id)
+    text = (update.effective_message.text or "") if update.effective_message else ""
+    log.info("%s -> %s", describe(user), logsetup.short(text, 200) or "(no text)")
     if is_authorized(user.id):
         return True
+    log.info("refused: not on the list")
     await ask_admins(update, context, user)
     return False
 
@@ -269,8 +270,10 @@ async def require_admin(update: Update) -> bool:
     if not user:
         return False
     claim_owner(user.id)
+    logsetup.new_trace(user.id)
     if is_admin(user.id):
         return True
+    log.info("refused: %s is not an admin", describe(user))
     await update.effective_message.reply_text(
         "⛔ only the bot's owner can do that" if is_authorized(user.id) else DENIED_MSG
     )
@@ -394,14 +397,26 @@ async def run_ytdlp(url: str, mode: str, workdir: Path, sub_langs: str = "en.*")
             ]
         cmd += [url]
 
-    log.info("yt-dlp: %s", " ".join(cmd[-4:]))
+    # The whole command line, not its tail: reproducing a failed download by
+    # hand is the first thing anyone does, and a truncated command cannot be
+    # pasted into a shell.
+    log.info("yt-dlp: %s", " ".join(shlex.quote(c) for c in cmd))
+    started = time.monotonic()
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
     _, stderr = await proc.communicate()
+    took = time.monotonic() - started
+    errors = (stderr or b"").decode("utf-8", "replace").strip()
     if proc.returncode != 0:
-        tail = (stderr or b"").decode("utf-8", "replace").strip().splitlines()
+        log.warning("yt-dlp rc=%s in %.1fs: %s", proc.returncode, took,
+                    logsetup.short(errors, 1200))
+        tail = errors.splitlines()
         raise RuntimeError("\n".join(tail[-4:]) or "yt-dlp failed")
+    # Warnings on a successful run explain the odd result later: a format that
+    # was silently substituted, a subtitle track that was not there.
+    log.info("yt-dlp ok in %.1fs%s", took,
+             ": " + logsetup.short(errors, 600) if errors else "")
 
     if mode == "subs":
         return sorted(workdir.glob("*.srt"))
@@ -507,6 +522,8 @@ async def send_result(update: Update, mode: str, files: list[Path]) -> list[str]
 async def process(update: Update, url: str, mode: str) -> None:
     status = await update.message.reply_text("⏳ downloading…")
     workdir = TMP_ROOT / uuid.uuid4().hex
+    started = time.monotonic()
+    log.info("download %s mode=%s into %s", url, mode, workdir.name)
     try:
         await update.effective_chat.send_action(ChatAction.RECORD_VIDEO)
         if mode == "subs":
@@ -514,8 +531,11 @@ async def process(update: Update, url: str, mode: str) -> None:
         else:
             files = await run_ytdlp(url, mode, workdir)
         if not files:
+            log.warning("nothing was downloaded from %s", url)
             await status.edit_text("⚠️ nothing was downloaded")
             return
+        log.info("got %s", ", ".join(
+            f"{f.name} ({f.stat().st_size // 1024} KB)" for f in files))
         await status.edit_text("⬆️ uploading…")
         await update.effective_chat.send_action(ChatAction.UPLOAD_VIDEO)
         notes = await send_result(update, mode, files)
@@ -543,6 +563,7 @@ async def process(update: Update, url: str, mode: str) -> None:
                 log.exception("cookie hint failed to render; sending plain text")
         await status.edit_text(text)
     finally:
+        log.info("done with %s in %.1fs", url, time.monotonic() - started)
         shutil.rmtree(workdir, ignore_errors=True)
 
 

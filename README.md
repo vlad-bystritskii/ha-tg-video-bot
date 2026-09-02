@@ -67,6 +67,25 @@ and mutable, so the bot can't be used to spam you. It only makes outbound
 connections (long polling) — no ports are exposed. Never commit your `.env` or
 `cookies.txt` (both are git-ignored).
 
+## Logs
+
+Written to two places at once: the container's stdout and a file on the data
+volume — `/data/logs/tg-video-bot.log`, 20 MB × 11 files. The file matters
+because `docker compose up -d --build` recreates the container and its journal
+leaves with the old one: without the file, history ends at every update.
+
+Default level is `DEBUG`; `LOG_LEVEL` changes it.
+
+Every operation gets a short id, printed on each line next to the telegram id of
+whoever started it, so one download can be pulled out whole:
+
+```bash
+grep 3f9a1c02 /data/logs/tg-video-bot.log
+```
+
+Tokens are masked on the way out (`logsetup.py`), so the HTTP layer can be read
+without leaking the bot token into the log.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

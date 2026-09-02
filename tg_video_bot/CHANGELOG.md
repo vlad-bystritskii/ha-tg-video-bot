@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.3
+
+- Logs now survive a rebuild. They are written to `/data/logs/tg-video-bot.log`
+  (20 MB × 11) as well as to stdout, because recreating the container takes its
+  journal with it — and the journal is where the answer to "why did that
+  download fail yesterday" lives.
+- Every download leaves a trail worth reading: the full `yt-dlp` command line
+  (pasteable into a shell as-is), how long it took, its exit code, and its
+  warnings even when it succeeded — a silently substituted format explains an
+  odd result hours later.
+- Each update gets a short id, printed on every line it causes, so one download
+  can be pulled out of a busy log with a single `grep`.
+- Logs default to `DEBUG` (set `LOG_LEVEL` to change it) and bot tokens are
+  masked on the way out, so the HTTP layer is finally readable without leaking
+  the token that used to hide in every Telegram URL.
+
 ## 0.4.2
 
 - A download that fails on `403 Forbidden` (or another sign-in/cookie error) now

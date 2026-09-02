@@ -23,6 +23,7 @@ COPY requirements.txt /
 RUN pip3 install --no-cache-dir --break-system-packages -r /requirements.txt
 
 COPY run.sh /run.sh
+COPY logsetup.py /logsetup.py
 COPY bot.py /bot.py
 RUN chmod +x /run.sh
 
