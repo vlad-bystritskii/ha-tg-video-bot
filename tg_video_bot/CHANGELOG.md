@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.4
+
+- An 18+ video no longer reads as "the cookies went stale". YouTube answers it
+  with the same "Sign in" error whether the session is dead or the account never
+  confirmed its age, and normal videos download without cookies at all — the
+  failure message now says so.
+- `COOKIE_REFRESH_CMD` (optional) replaces the copy-paste export recipe with
+  the owner's own one-shot installer.
+- yt-dlp floor raised to 2026.10.26 — YouTube breaks older releases regularly.
+
 ## 0.4.3
 
 - Logs now survive a rebuild. They are written to `/data/logs/tg-video-bot.log`

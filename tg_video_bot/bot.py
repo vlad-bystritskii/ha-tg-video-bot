@@ -303,6 +303,18 @@ COOKIE_ERROR_RE = re.compile(
     re.IGNORECASE,
 )
 
+# YouTube answers an 18+ video with the same "Sign in" wording whether the cookies
+# are dead or the account never confirmed its age, and ordinary videos download
+# fine without any cookies at all - so "everything else works" proves nothing.
+# Say that instead of a flat "cookies went stale".
+AGE_ERROR_RE = re.compile(
+    r"confirm your age|age[- ]restricted|inappropriate for some users", re.IGNORECASE
+)
+
+# An owner who has a one-shot installer (e.g. a script that pushes the browser's
+# cookies straight to this server) can show that instead of the generic recipe.
+COOKIE_REFRESH_OVERRIDE = os.environ.get("COOKIE_REFRESH_CMD", "").strip()
+
 # A bare --cookies-from-browser dump carries every site you are logged into, so
 # the command pipes it through awk and keeps only what this download needs.
 COOKIE_REFRESH_CMD = (
@@ -331,12 +343,24 @@ def cookie_filter_expr(url: str) -> str:
     return "$1 ~ /(^|\\.)%s$/" % base.replace(".", "\\.")
 
 
-def cookie_hint(url: str, for_admin: bool) -> str:
+def cookie_hint(url: str, for_admin: bool, age: bool = False) -> str:
     """HTML fragment telling an admin how to refresh the cookies ('' if N/A)."""
     if not COOKIES_PATH:
         return ""
+    age_note = (
+        "\n\n🔞 <b>this video is 18+.</b> YouTube only shows it to a signed-in "
+        "account that has confirmed its age. Normal videos download without any "
+        "cookies, so them working doesn't mean the cookies are alive."
+        if age else ""
+    )
     if not for_admin:
-        return "\n\n🍪 the cookies may have expired — ask an owner to refresh them."
+        return age_note + "\n\n🍪 the cookies may have expired — ask an owner to refresh them."
+    if COOKIE_REFRESH_OVERRIDE:
+        return (
+            age_note + "\n\n🍪 <b>refresh the cookies:</b> run "
+            f"<code>{html.escape(COOKIE_REFRESH_OVERRIDE, quote=False)}</code> "
+            "on your machine — it installs and checks them itself."
+        )
     cmd = COOKIE_REFRESH_CMD.format(
         url=shlex.quote(url), filter=cookie_filter_expr(url)
     )
@@ -345,7 +369,7 @@ def cookie_hint(url: str, for_admin: bool) -> str:
         if Path(COOKIES_PATH).is_file()
         else "this one probably needs cookies, and I have none"
     )
-    return (
+    return age_note + (
         f"\n\n🍪 <b>{lead}.</b> Run this on your "
         "machine (swap <code>chrome</code> for firefox/safari/edge if needed):\n"
         # quote=False: inside <pre> only & < > need escaping, and turning the
@@ -547,7 +571,8 @@ async def process(update: Update, url: str, mode: str) -> None:
         log.exception("download failed")
         msg = str(exc)
         hint = (
-            cookie_hint(url, is_admin(update.effective_user.id))
+            cookie_hint(url, is_admin(update.effective_user.id),
+                        bool(AGE_ERROR_RE.search(msg)))
             if COOKIE_ERROR_RE.search(msg)
             else ""
         )

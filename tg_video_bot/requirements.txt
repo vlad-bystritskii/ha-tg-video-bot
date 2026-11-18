@@ -1,4 +1,4 @@
 # [default] pulls in yt-dlp-ejs, needed together with a JS runtime (Deno) for
 # YouTube's JS challenges. >=2025.11.12 is when the runtime became required.
-yt-dlp[default]>=2025.11.12
+yt-dlp[default]>=2026.10.26
 python-telegram-bot==21.*
